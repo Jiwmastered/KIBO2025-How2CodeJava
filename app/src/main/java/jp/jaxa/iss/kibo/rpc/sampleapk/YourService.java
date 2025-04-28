@@ -1,6 +1,7 @@
 package jp.jaxa.iss.kibo.rpc.sampleapk;
 
 import android.accessibilityservice.GestureDescription;
+import android.graphics.Bitmap;
 import android.util.Pair;
 
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
@@ -31,7 +32,11 @@ public class YourService extends KiboRpcService {
         Point point = new Point(10.9d, -9.92284d, 5.195d);
         Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
         api.moveTo(point, quaternion, false);
-
+        System.out.println("StartRotating");
+        api.moveTo(point, new Quaternion(1f, 0f, 0f, 0f), false);
+        api.moveTo(point, new Quaternion(0f, 1f, 0f, 0f), false);
+        api.moveTo(point, new Quaternion(0f, 0f, 1f, 0f), false);
+        api.moveTo(point, new Quaternion(0f, 0f, 0f, 1f), false);
         // Get a camera image.
         Mat image = api.getMatNavCam();
 
@@ -45,13 +50,23 @@ public class YourService extends KiboRpcService {
         /* **************************************************** */
         /* Let's move to each area and recognize the items. */
 
-        // Use Map
-        Map<String, Pair<Point, Quaternion>> pointsMap = new HashMap<>();
-        String patrolPath[] = {"Area 1", "Area 2", "Area 3", "Area 4"};
-        List<String> sequencePath = new ArrayList<>(Arrays.asList(patrolPath));
+        Map<String, Integer> itemType = new HashMap<>();
+        itemType.put("coin", 1);
+        itemType.put("compass", 1);
+        itemType.put("coral", 1);
+        itemType.put("fossil", 1);
+        itemType.put("key", 1);
+        itemType.put("letter", 1);
+        itemType.put("shell", 1);
+        itemType.put("treasure_box", 1);
+        itemType.put("crystal", 2);
+        itemType.put("diamond", 2);
+        itemType.put("emerald", 2);
+
 
         Map<String, List<Pair<String, String>>> patrolResult = new HashMap<>();  // map[Markers] = list( pair<string, string> )
 
+        Map<String, Pair<Point, Quaternion>> pointsMap = new HashMap<>();
         pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(0.687483f, -0.164974f, 0.164974f, 0.687483f)));
         if (pointsMap.isEmpty()) {
             System.out.println("ERROR: 'pointsMap' is empty");
@@ -61,6 +76,9 @@ public class YourService extends KiboRpcService {
         pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.5d), new Quaternion(0.5f, -0.5f, 0.5f, 0.5f)));
         pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 0f, 1f)));
         pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
+
+        String patrolPath[] = {"Area 1", "Area 2", "Area 3", "Area 4"};
+        List<String> sequencePath = new ArrayList<>(Arrays.asList(patrolPath));
 
         /*
         for (Map.Entry<String, Pair<Point, Quaternion>> entry : pointsMap.entrySet()) {*/
@@ -74,10 +92,49 @@ public class YourService extends KiboRpcService {
             api.moveTo(point, quaternion, true);
 
             // Capture markers and treasures
-            int itemQuant = 2; // Item Quantity
-            String itemName = "itemName"; // Item Name
+            //         save img
+            Bitmap bitmapDockCam = api.getBitmapDockCam();
+            Mat matDockCam = api.getMatDockCam();
+            Bitmap bitmapNavCam = api.getBitmapNavCam();
+            Mat matNavCam = api.getMatNavCam();
 
-            api.setAreaInfo(i + 1, area, itemQuant);
+            api.saveBitmapImage(bitmapDockCam, "bit_dock_area_" + (i+1));
+            api.saveMatImage(matDockCam, "mat_dock_area_"+ (i+1));
+            api.saveBitmapImage(bitmapNavCam, "bit_nav_area_" + (i+1));
+            api.saveMatImage(matNavCam, "mat_nav_area_"+ (i+1));
+
+            /*
+            objectIdenification() --> get list<string> of detected object, detection time = 1000ms,
+            List<String> detectionResult = objectList;
+            for (int it=0; it<detectionResult.size(); it++) {
+                String item = detectionResult.get(it);
+                if (itemType.get(item) == 1) {
+                    itemName = item;
+                    itemQuantity++;
+                } else {
+                    treasure = item;
+                }
+            }
+            */
+
+            // Base detection data
+            String itemName = "itemName";
+            String treasure = "None";
+            int itemQuantity = 0;
+
+            // Check if marker is mapped, append pair of treasure name and area
+            Pair<String, String> markerDat = Pair.create(treasure, area);
+            if (!patrolResult.containsKey(itemName)){
+                List<Pair<String, String>> markerList = new ArrayList<Pair<String, String>>(Arrays.asList(markerDat));
+                patrolResult.put(itemName, markerList);
+                //System.out.println(markerList.get(0).first);
+            } else {
+                List<Pair<String, String>> markerList = patrolResult.get(itemName);
+                markerList.add(markerDat);
+                patrolResult.put(itemName, markerList);
+            }
+
+            api.setAreaInfo(i + 1, itemName, itemQuantity);
         }
 
 
@@ -86,6 +143,12 @@ public class YourService extends KiboRpcService {
         quaternion = new Quaternion(0f, 0f, 0.707f, 0.707f);
         api.moveTo(point, quaternion, false);
         api.reportRoundingCompletion();
+        //          save img
+        Bitmap bitmapNavCam = api.getBitmapNavCam();
+        Mat matNavCam = api.getMatNavCam();
+        api.saveBitmapImage(bitmapNavCam, "bit_nav_astro");
+        api.saveMatImage(matNavCam, "mat_nav_astro");
+
 
         /* ********************************************************** */
         /* Write your code to recognize which target item the astronaut has. */
@@ -97,16 +160,18 @@ public class YourService extends KiboRpcService {
             List<Pair<String, String>> patrolList = patrolResult.get(astroMarker.first);
             for (int i=0; i < patrolList.size(); i++) {
                 String treasure = patrolList.get(i).first;
-                if (target == treasure) {
+                if (target.equals(treasure)) {
                     targetArea = patrolList.get(i).second;
+                    System.out.print("Marker Detected at " + targetArea);
                 }
             }
         } else if (patrolResult.containsKey(astroMarker.second)) {
             List<Pair<String, String>> patrolList = patrolResult.get(astroMarker.second);
             for (int i=0; i < patrolList.size(); i++) {
                 String treasure = patrolList.get(i).first;
-                if (target == treasure) {
+                if (target.equals(treasure)) {
                     targetArea = patrolList.get(i).second;
+                    System.out.print("Marker Detected at " + targetArea);
                 }
             }
         } else {
@@ -114,9 +179,7 @@ public class YourService extends KiboRpcService {
         }
         // If target is Area 2:
 
-
         /* ********************************************************** */
-
         // Let's notify the astronaut when you recognize it.
         api.notifyRecognitionItem();
 
@@ -124,10 +187,6 @@ public class YourService extends KiboRpcService {
 
         Pair<Point, Quaternion> targetCoordinate = new Pair<>(pointsMap.get(targetArea).first, pointsMap.get(targetArea).second);
         api.moveTo(targetCoordinate.first, targetCoordinate.second, false); // go to target area
-        /* ******************************************************************************************************* */
-        /* Write your code to move Astrobee to the location of the target item (what the astronaut is looking for) */
-        /* ******************************************************************************************************* */
-
         // Take a snapshot of the target item.
         api.takeTargetItemSnapshot();
     }
