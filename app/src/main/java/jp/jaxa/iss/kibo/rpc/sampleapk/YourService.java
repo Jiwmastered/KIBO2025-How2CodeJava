@@ -36,6 +36,10 @@ public class YourService extends KiboRpcService {
         api.saveMatImage(matNavCam, "mat_nav_area_"+ (areaId+1));
     }
 
+    private void moveTo(Point point, Quaternion quaternion, boolean printPos) {
+        api.moveTo(point, quaternion, printPos);
+        api.moveTo(point, quaternion, printPos);
+    }
 
     @Override
     protected void runPlan1() {
@@ -45,14 +49,14 @@ public class YourService extends KiboRpcService {
         // Move to a point.
         Point point = new Point(10.9d, -9.92284d, 5.195d);
         Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-        api.moveTo(point, quaternion, false);
+        moveTo(point, quaternion, false);
 
         // Rotation Test
         System.out.println("StartRotating");
-        api.moveTo(point, new Quaternion(1f, 0f, 0f, 0f), false);
-        api.moveTo(point, new Quaternion(0f, 1f, 0f, 0f), false);
-        api.moveTo(point, new Quaternion(0f, 0f, 1f, 0f), false);
-        api.moveTo(point, new Quaternion(0f, 0f, 0f, 1f), false);
+        moveTo(point, new Quaternion(1f, 0f, 0f, 0f), false);
+        moveTo(point, new Quaternion(0f, 1f, 0f, 0f), false);
+        moveTo(point, new Quaternion(0f, 0f, 1f, 0f), false);
+        moveTo(point, new Quaternion(0f, 0f, 0f, 1f), false);
 
 
         /* ******************************************************************************** */
@@ -73,11 +77,7 @@ public class YourService extends KiboRpcService {
         itemTypeMap.put("emerald", 2);
 
         pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(0.687483f, -0.164974f, 0.164974f, 0.687483f)));
-        if (pointsMap.isEmpty()) {
-            System.out.println("ERROR: 'pointsMap' is empty");
-            api.shutdownFactory();
-        }
-        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -8.8d, 4.6d), new Quaternion(0.5f, -0.5f, 0.5f, 0.5f)));
+        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -7.8d, 4.6d), new Quaternion(0.5f, -0.5f, 0.5f, 0.5f)));
         pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.5d), new Quaternion(0.5f, -0.5f, 0.5f, 0.5f)));
         pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 0f, 1f)));
         pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
@@ -92,7 +92,7 @@ public class YourService extends KiboRpcService {
             // Move through every area
             point = areaPosition.first;
             quaternion = areaPosition.second;
-            api.moveTo(point, quaternion, true);
+            moveTo(point, quaternion, true);
 
             // Capture markers and treasures, Save img
             Bitmap bitmapDockCam = api.getBitmapDockCam();
@@ -138,7 +138,7 @@ public class YourService extends KiboRpcService {
         // When you move to the front of the astronaut, report the rounding completion.
         point = new Point(11.143d, -6.7607d, 4.9654d);
         quaternion = new Quaternion(0f, 0f, 0.707f, 0.707f);
-        api.moveTo(point, quaternion, false);
+        moveTo(point, quaternion, false);
         api.reportRoundingCompletion();
         //          save img
         Bitmap bitmapNavCam = api.getBitmapNavCam();
@@ -183,7 +183,7 @@ public class YourService extends KiboRpcService {
 
         // Move to target area and Take a snapshot of the target item.
         Pair<Point, Quaternion> targetCoordinate = new Pair<>(pointsMap.get(targetArea).first, pointsMap.get(targetArea).second);
-        api.moveTo(targetCoordinate.first, targetCoordinate.second, false); // go to target area
+        moveTo(targetCoordinate.first, targetCoordinate.second, false); // go to target area
         api.takeTargetItemSnapshot();
     }
 
@@ -196,7 +196,7 @@ public class YourService extends KiboRpcService {
 
         Point point = new Point(10.9d, -9.92284d, 5.195d);
         Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-        api.moveTo(point, quaternion, false);
+        moveTo(point, quaternion, false);
 
         point = new Point(11.143d, -6.7607d, 4.9654d);
         quaternion = new Quaternion(0, 0, 0.5f, 0.5f);
