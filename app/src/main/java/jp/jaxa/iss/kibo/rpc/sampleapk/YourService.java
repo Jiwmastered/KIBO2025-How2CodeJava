@@ -49,15 +49,6 @@ public class YourService extends KiboRpcService {
         // Move to a point.
         Point point = new Point(10.9d, -9.92284d, 5.195d);
         Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-        moveTo(point, quaternion, false);
-
-        // Rotation Test
-        System.out.println("StartRotating");
-        moveTo(point, new Quaternion(1f, 0f, 0f, 0f), false);
-        moveTo(point, new Quaternion(0f, 1f, 0f, 0f), false);
-        moveTo(point, new Quaternion(0f, 0f, 1f, 0f), false);
-        moveTo(point, new Quaternion(0f, 0f, 0f, 1f), false);
-
 
         /* ******************************************************************************** */
         /* Write your code to recognize the type and number of landmark items in each area! */
@@ -76,10 +67,10 @@ public class YourService extends KiboRpcService {
         itemTypeMap.put("diamond", 2);
         itemTypeMap.put("emerald", 2);
 
-        pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(0.687483f, -0.164974f, 0.164974f, 0.687483f)));
-        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -7.8d, 4.6d), new Quaternion(0.5f, -0.5f, 0.5f, 0.5f)));
-        pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.5d), new Quaternion(0.5f, -0.5f, 0.5f, 0.5f)));
-        pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 0f, 1f)));
+        pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f)));
+        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -7.8d, 4.6d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
+        pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.5d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
+        pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 1f, 0f)));
         pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
 
         String patrolPath[] = {"Area 1", "Area 2", "Area 3", "Area 4"};
