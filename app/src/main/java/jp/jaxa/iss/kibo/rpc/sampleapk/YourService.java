@@ -26,12 +26,12 @@ import javax.crypto.NullCipher;
  */
 
 public class YourService extends KiboRpcService {
-    private Map<String, Integer> itemTypeMap = new HashMap<>(); // Map of item name and type, 1=landmark, 2=treasure // May no required
+//    private Map<String, Integer> itemTypeMap = new HashMap<>(); // Map of item name and type, 1=landmark, 2=treasure // May no required
     private Map<String, List<Pair<String, String>>> patrolResultMap = new HashMap<>();  // map[Markers] = list( pair<string, string> )
     private Map<String, Pair<Point, Quaternion>> pointsMap = new HashMap<>();
     private Map<String, List<Pair>> pointsMapList = new HashMap<>();
-    private Map<String, Pair<String, String>> areaInfoMap = new HashMap<>(); // Map<Landmark, Pair<Area, Treasure>>
-    private Pair itemTarget = Pair.create("", ""); // Pair<Landmark, Treasure>
+    private Map<List<String>, Pair<String, String>> areaInfoMap = new HashMap<>(); // Map<Landmark, Pair<Area, Treasure>>
+    private Pair itemTarget = Pair.create(Pair.create("", ""), "" ); // Pair<Landmark, Treasure>
 
     private List<String> treasureList = Arrays.asList("crystal", "diamond", "emerald");
     private List<String> landmarkList = Arrays.asList("coin", "compass", "coral", "fossil", "key", "letter", "shell", "treasure_box");
@@ -44,12 +44,13 @@ public class YourService extends KiboRpcService {
     }
 
     //      Map<LMItem, Pair<Area, Treasure>>
-    private Map<String, Pair<String, String>> imageRecognition(int area /* IDK WHAT TO INPUT */) {
+    private Map<List<String>, Pair<String, String>> imageRecognition(int area /* IDK WHAT TO INPUT */) {
 
-        Map<String, Pair<String, String>> areaInfoMap = new HashMap<>();
+        Map<List<String>, Pair<String, String>> areaInfoMap = new HashMap<>();
+        List<String> landmarks = new ArrayList<>();
 
         // TODO: Use API here
-        areaInfoMap.put("Area " + area, Pair.create("use api recog", "use api recog"));
+        areaInfoMap.put(landmarks, Pair.create("area", "treasure"));
         return areaInfoMap;
     }
 
@@ -64,53 +65,51 @@ public class YourService extends KiboRpcService {
         Point point = new Point(10.9d, -9.92284d, 5.195d);
         Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
 
-        // May no required
-        itemTypeMap.put("coin", 1);
-        itemTypeMap.put("compass", 1);
-        itemTypeMap.put("coral", 1);
-        itemTypeMap.put("fossil", 1);
-        itemTypeMap.put("key", 1);
-        itemTypeMap.put("letter", 1);
-        itemTypeMap.put("shell", 1);
-        itemTypeMap.put("treasure_box", 1);
-        itemTypeMap.put("crystal", 2);
-        itemTypeMap.put("diamond", 2);
-        itemTypeMap.put("emerald", 2);
+//        // May no required
+//        itemTypeMap.put("coin", 1);
+//        itemTypeMap.put("compass", 1);
+//        itemTypeMap.put("coral", 1);
+//        itemTypeMap.put("fossil", 1);
+//        itemTypeMap.put("key", 1);
+//        itemTypeMap.put("letter", 1);
+//        itemTypeMap.put("shell", 1);
+//        itemTypeMap.put("treasure_box", 1);
+//        itemTypeMap.put("crystal", 2);
+//        itemTypeMap.put("diamond", 2);
+//        itemTypeMap.put("emerald", 2);
 
 
-        // TODO: Second move not set
         pointsMapList.put("Test 1", new ArrayList<Pair>(Arrays.asList(
-                new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f)),
-                new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f))
+                new Pair<>(new Point(10.6265d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f)),
+                new Pair<>(new Point(10.9211d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f)),
+                new Pair<>(new Point(11.2711d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f))
         )));
 
         pointsMapList.put("Test 2", new ArrayList<Pair>(Arrays.asList(
-                new Pair<>(new Point(10.9d, -8.8d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)),
-                new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f))
+                new Pair<>(new Point(11.3432d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
+                new Pair<>(new Point(10.9358d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
+                new Pair<>(new Point(10.5544d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f))
         )));
 
         pointsMapList.put("Test 3", new ArrayList<Pair>(Arrays.asList(
-                new Pair<>(new Point(10.9d, -7.9d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)),
-                new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f))
+                new Pair<>(new Point(10.5602d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
+                new Pair<>(new Point(10.9503d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
+                new Pair<>(new Point(11.3403d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f))
         )));
 
         pointsMapList.put("Test 4", new ArrayList<Pair>(Arrays.asList(
-                new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 1f, 0f)),
-                new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f))
-        )));
-
-        pointsMapList.put("Test 5", new ArrayList<Pair>(Arrays.asList(
-                new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)),
-                new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f))
+                new Pair<>(new Point(10.6149d, -6.82423d, 4.55599d), new Quaternion(0f, 0f, 1f, 0f)),
+                new Pair<>(new Point(10.6149d, -6.82423d, 4.9114d), new Quaternion(0f, 0f, 1f, 0f)),
+                new Pair<>(new Point(10.6149d, -6.82423d, 5.31016d), new Quaternion(0f, 0f, 1f, 0f))
         )));
 
 
-        pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f)));
-        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -8.8d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
-        pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
-        pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 1f, 0f)));
-
-        pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
+//        pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f)));
+//        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -8.8d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
+//        pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
+//        pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 1f, 0f)));
+//
+//        pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
 
         String[] patrolPath = {"Area 1", "Area 2", "Area 3", "Area 4"};
         List<String> sequencePath = new ArrayList<>(Arrays.asList(patrolPath));
@@ -222,22 +221,24 @@ public class YourService extends KiboRpcService {
         api.reportRoundingCompletion();
 
         // TODO: Use API here
-        itemTarget = Pair.create("use api recognizing", "use api recognizing");
+        itemTarget = Pair.create(Pair.create("landmark1", "landmark2"), "treasure");
 
 //        private List<String> treasureList = Arrays.asList("crystal", "diamond", "emerald");
 //        private List<String> landmarkList = Arrays.asList("coin", "compass", "coral", "fossil", "key", "letter", "shell", "treasure_box");
 
         String areaTarget = "";
 
-        for (Map.Entry<String, Pair<String, String>> entry : areaInfoMap.entrySet()) {
-            String landmark = entry.getKey();
+        for (Map.Entry<List<String>, Pair<String, String>> entry : areaInfoMap.entrySet()) {
+            List<String> landmarks = entry.getKey();
             Pair<String, String> areaTreasurePair = entry.getValue();
             String area = areaTreasurePair.first;
             String treasure = areaTreasurePair.second;
 
             // Check landmark and treasure are matched
-            if (landmark.equals(itemTarget.first) && treasure.equals(itemTarget.second)) {
-                areaTarget = area;
+            for (String landmark : landmarks) {
+                if (landmark.equals(itemTarget.first) && treasure.equals(itemTarget.second)) {
+                    areaTarget = area;
+                }
             }
         }
 
