@@ -11,13 +11,11 @@ import gov.nasa.arc.astrobee.types.Quaternion;
 
 import org.opencv.core.Mat;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
-import java.util.Vector;
 
 import javax.crypto.NullCipher;
 
@@ -33,14 +31,14 @@ public class YourService extends KiboRpcService {
     private Map<List<String>, Pair<String, String>> areaInfoMap = new HashMap<>(); // Map<Landmark, Pair<Area, Treasure>>
     private Pair itemTarget = Pair.create(Pair.create("", ""), "" ); // Pair<Landmark, Treasure>
 
-    private List<String> treasureList = Arrays.asList("crystal", "diamond", "emerald");
-    private List<String> landmarkList = Arrays.asList("coin", "compass", "coral", "fossil", "key", "letter", "shell", "treasure_box");
+//    private List<String> treasureList = Arrays.asList("crystal", "diamond", "emerald");
+//    private List<String> landmarkList = Arrays.asList("coin", "compass", "coral", "fossil", "key", "letter", "shell", "treasure_box");
 
     private void saveImagePack(Bitmap bitmapDockCam, Mat matDockCam, Bitmap bitmapNavCam, Mat matNavCam, int areaId, int imgId) {
-        api.saveBitmapImage(bitmapDockCam, "bit_dock_area_" + (areaId) + "_" + imgId);
-        api.saveMatImage(matDockCam, "mat_dock_area_" + (areaId) + "_" + imgId);
-        api.saveBitmapImage(bitmapNavCam, "bit_nav_area_" + (areaId) + "_" + imgId);
-        api.saveMatImage(matNavCam, "mat_nav_area_" + (areaId) + "_" + imgId);
+        api.saveBitmapImage(bitmapDockCam, "bit_dock_area_" + areaId + "_" + imgId);
+        api.saveMatImage(matDockCam, "mat_dock_area_" + areaId + "_" + imgId);
+        api.saveBitmapImage(bitmapNavCam, "bit_nav_area_" + areaId + "_" + imgId);
+        api.saveMatImage(matNavCam, "mat_nav_area_" + areaId + "_" + imgId);
     }
 
     //      Map<LMItem, Pair<Area, Treasure>>
@@ -79,25 +77,25 @@ public class YourService extends KiboRpcService {
 //        itemTypeMap.put("emerald", 2);
 
 
-        pointsMapList.put("Test 1", new ArrayList<Pair>(Arrays.asList(
+        pointsMapList.put("Area 1", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(10.6265d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f)),
                 new Pair<>(new Point(10.9211d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f)),
                 new Pair<>(new Point(11.2711d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f))
         )));
 
-        pointsMapList.put("Test 2", new ArrayList<Pair>(Arrays.asList(
+        pointsMapList.put("Area 2", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(11.3432d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
                 new Pair<>(new Point(10.9358d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
                 new Pair<>(new Point(10.5544d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f))
         )));
 
-        pointsMapList.put("Test 3", new ArrayList<Pair>(Arrays.asList(
+        pointsMapList.put("Area 3", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(10.5602d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
                 new Pair<>(new Point(10.9503d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
                 new Pair<>(new Point(11.3403d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f))
         )));
 
-        pointsMapList.put("Test 4", new ArrayList<Pair>(Arrays.asList(
+        pointsMapList.put("Area 4", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(10.6149d, -6.82423d, 4.55599d), new Quaternion(0f, 0f, 1f, 0f)),
                 new Pair<>(new Point(10.6149d, -6.82423d, 4.9114d), new Quaternion(0f, 0f, 1f, 0f)),
                 new Pair<>(new Point(10.6149d, -6.82423d, 5.31016d), new Quaternion(0f, 0f, 1f, 0f))
@@ -111,8 +109,7 @@ public class YourService extends KiboRpcService {
 //
 //        pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
 
-        String[] patrolPath = {"Area 1", "Area 2", "Area 3", "Area 4"};
-        List<String> sequencePath = new ArrayList<>(Arrays.asList(patrolPath));
+        List<String> sequencePath = new ArrayList<>(Arrays.asList("Area 1", "Area 2", "Area 3", "Area 4"));
 
 
 //        Map<String, List<Pair>> pointsMapList = new HashMap<>();
@@ -295,30 +292,4 @@ public class YourService extends KiboRpcService {
         api.takeTargetItemSnapshot();
     }
 
-    // No use
-    /*
-    @Override
-    protected void runPlan2(){
-       // write your plan 2 here.
-        api.startMission();
-
-        Point point = new Point(10.9d, -9.92284d, 5.195d);
-        Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-        api.moveTo(point, quaternion, false);
-
-        point = new Point(11.143d, -6.7607d, 4.9654d);
-        quaternion = new Quaternion(0, 0, 0.5f, 0.5f);
-
-    }
-
-    @Override
-    protected void runPlan3(){
-        // write your plan 3 here.
-    }
-    */
-
-    // You can add your method.
-    private String yourMethod() {
-        return "your method";
-    }
 }
