@@ -4,15 +4,17 @@ buildscript {
     repositories {
         mavenCentral()
         maven {
-            url 'https://maven.google.com/'
+            url 'https://maven.google.com/' //url "https://chaquo.com/maven" //
             name 'Google'
         }
+        /*flatDir {
+            dirs 'libs'
+        }*/
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.6.1'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
+        //classpath name: 'gradle-6.3.0'//"com.chaquo.python:gradle:6.3.0"
+        //classpath 'org.json:json:20190722'
     }
 }
 
@@ -38,3 +40,4 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+

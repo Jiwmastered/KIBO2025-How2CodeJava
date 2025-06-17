@@ -25,96 +25,80 @@ import javax.crypto.NullCipher;
 
 public class YourService extends KiboRpcService {
 //    private Map<String, Integer> itemTypeMap = new HashMap<>(); // Map of item name and type, 1=landmark, 2=treasure // May no required
-    private Map<String, List<Pair<String, String>>> patrolResultMap = new HashMap<>();  // map[Markers] = list( pair<string, string> )
-    private Map<String, Pair<Point, Quaternion>> pointsMap = new HashMap<>();
-    private Map<String, List<Pair>> pointsMapList = new HashMap<>();
-    private Map<List<String>, Pair<String, String>> areaInfoMap = new HashMap<>(); // Map<Landmark, Pair<Area, Treasure>>
-    private Pair itemTarget = Pair.create(Pair.create("", ""), "" ); // Pair<Landmark, Treasure>
-
 //    private List<String> treasureList = Arrays.asList("crystal", "diamond", "emerald");
 //    private List<String> landmarkList = Arrays.asList("coin", "compass", "coral", "fossil", "key", "letter", "shell", "treasure_box");
+    ObjectDetectionJar ObjDetectionSession = new ObjectDetectionJar();
 
-    private void saveImagePack(Bitmap bitmapDockCam, Mat matDockCam, Bitmap bitmapNavCam, Mat matNavCam, int areaId, int imgId) {
-        api.saveBitmapImage(bitmapDockCam, "bit_dock_area_" + areaId + "_" + imgId);
-        api.saveMatImage(matDockCam, "mat_dock_area_" + areaId + "_" + imgId);
-        api.saveBitmapImage(bitmapNavCam, "bit_nav_area_" + areaId + "_" + imgId);
-        api.saveMatImage(matNavCam, "mat_nav_area_" + areaId + "_" + imgId);
-    }
+    private static Map<String, List<Pair>> pointMapList() {
+        Map<String, List<Pair>> pMapList = new HashMap<>();
+        pMapList.put("Area 1", new ArrayList<Pair>(Arrays.asList(
+                new Pair<>(new Point(10.6265d, -10.0406d, 4.75906d), new Quaternion(-0.011651f, -0.011651f, -0.706904f, 0.706904f)),
+                new Pair<>(new Point(10.9211d, -10.0406d, 4.75906d), new Quaternion(-0.011651f, -0.011651f, -0.706904f, 0.706904f)),
+                new Pair<>(new Point(11.2711d, -10.0406d, 4.75906d), new Quaternion(-0.011651f, -0.011651f, -0.706904f, 0.706904f)),
 
-    //      Map<LMItem, Pair<Area, Treasure>>
-    private Map<List<String>, Pair<String, String>> imageRecognition(int area /* IDK WHAT TO INPUT */) {
-
-        Map<List<String>, Pair<String, String>> areaInfoMap = new HashMap<>();
-        List<String> landmarks = new ArrayList<>();
-
-        // TODO: Use API here
-        areaInfoMap.put(landmarks, Pair.create("area", "treasure"));
-        return areaInfoMap;
-    }
-
-    @Override
-    protected void runPlan1() {
-        // The mission starts.
-        api.startMission();
-
-        // Move to a point.
-
-        // Initiate Point and Quaternion
-        Point point = new Point(10.9d, -9.92284d, 5.195d);
-        Quaternion quaternion = new Quaternion(0f, 0f, -0.707f, 0.707f);
-
-//        // May no required
-//        itemTypeMap.put("coin", 1);
-//        itemTypeMap.put("compass", 1);
-//        itemTypeMap.put("coral", 1);
-//        itemTypeMap.put("fossil", 1);
-//        itemTypeMap.put("key", 1);
-//        itemTypeMap.put("letter", 1);
-//        itemTypeMap.put("shell", 1);
-//        itemTypeMap.put("treasure_box", 1);
-//        itemTypeMap.put("crystal", 2);
-//        itemTypeMap.put("diamond", 2);
-//        itemTypeMap.put("emerald", 2);
-
-
-        pointsMapList.put("Area 1", new ArrayList<Pair>(Arrays.asList(
-                new Pair<>(new Point(10.6265d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f)),
-                new Pair<>(new Point(10.9211d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f)),
-                new Pair<>(new Point(11.2711d, -10.0406d, 4.75906d), new Quaternion(-0.176166f, -0.176166f, 0.684811f, 0.684811f))
+                // Extend views for image capturing
+                new Pair<>(new Point(10.9211d, -10.0348d, 5.20394d), new Quaternion(-0.011651f, -0.011651f, -0.706904f, 0.706904f)),
+                new Pair<>(new Point(10.9211d, -10.0348d, 5.20394d), new Quaternion(-0.008703f, -0.013991f, -0.528058f, 0.848871f)),
+                new Pair<>(new Point(10.9211d, -10.0348d, 5.20394d), new Quaternion(-0.013303f, -0.009722f, -0.807151f, 0.58986f)),
+                new Pair<>(new Point(10.9211d, -10.0348d, 5.20394d), new Quaternion(0.679825f, -0.73313f, -0.002777f, 0.007045f)),
+                new Pair<>(new Point(10.9211d, -10.0348d, 5.20394d), new Quaternion(0.895047f, -0.445569f, -0.000108f, 0.007572f)),
+                new Pair<>(new Point(10.9211d, -10.0348d, 5.20394d), new Quaternion(0.635487f, -0.771879f, -0.003187f, 0.00687f))
         )));
 
-        pointsMapList.put("Area 2", new ArrayList<Pair>(Arrays.asList(
+        pMapList.put("Area 2", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(11.3432d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
                 new Pair<>(new Point(10.9358d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
+                // Extend views for image capturing
+                new Pair<>(new Point(10.9358d, -8.92783d, 4.45397d), new Quaternion(0.127238f, 0.695565f, 0.127238f, 0.695565f)),
+                new Pair<>(new Point(10.9358d, -8.92783d, 4.45397d), new Quaternion(-0.081032f, 0.702449f, -0.081032f, 0.702449f)),
+
                 new Pair<>(new Point(10.5544d, -8.92783d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f))
         )));
 
-        pointsMapList.put("Area 3", new ArrayList<Pair>(Arrays.asList(
+        pMapList.put("Area 3", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(10.5602d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
                 new Pair<>(new Point(10.9503d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f)),
+                // Extend views for image capturing
+                new Pair<>(new Point(10.9503d, -7.96923d, 4.45397d), new Quaternion(0.127238f, 0.695565f, 0.127238f, 0.695565f)),
+                new Pair<>(new Point(10.9503d, -7.96923d, 4.45397d), new Quaternion(-0.081032f, 0.702449f, -0.081032f, 0.702449f)),
+
                 new Pair<>(new Point(11.3403d, -7.96923d, 4.45397d), new Quaternion(0f, 0.707107f, 0f, 0.707107f))
         )));
 
-        pointsMapList.put("Area 4", new ArrayList<Pair>(Arrays.asList(
+        pMapList.put("Area 4", new ArrayList<Pair>(Arrays.asList(
                 new Pair<>(new Point(10.6149d, -6.82423d, 4.55599d), new Quaternion(0f, 0f, 1f, 0f)),
                 new Pair<>(new Point(10.6149d, -6.82423d, 4.9114d), new Quaternion(0f, 0f, 1f, 0f)),
                 new Pair<>(new Point(10.6149d, -6.82423d, 5.31016d), new Quaternion(0f, 0f, 1f, 0f))
         )));
+        return pMapList;
+    }
 
 
-//        pointsMap.put("Area 1", new Pair<>(new Point(10.8d, -9.7d, 4.7d), new Quaternion(-0.231908f, -0.231908f, -0.667883f, 0.667883f)));
-//        pointsMap.put("Area 2", new Pair<>(new Point(10.9d, -8.8d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
-//        pointsMap.put("Area 3", new Pair<>(new Point(10.9d, -7.9d, 4.65d), new Quaternion(-0.5f, 0.5f, 0.5f, 0.5f)));
-//        pointsMap.put("Area 4", new Pair<>(new Point(10.6d, -6.7d, 5.0d), new Quaternion(0f, 0f, 1f, 0f)));
-//
-//        pointsMap.put("Area 5", new Pair<>(new Point(11.1d, -6.9d, 4.8d), new Quaternion(0f, 0f, -0.707f, 0.707f)));
+    public void saveImagePack(Bitmap bitmapDockCam, Mat matDockCam, Bitmap bitmapNavCam, Mat matNavCam, int areaId, int imgId) {
+        //api.saveBitmapImage(bitmapDockCam, "bit_dock_area_" + areaId + "_" + imgId + ".png");
+        //api.saveMatImage(matDockCam, "mat_dock_area_" + areaId + "_" + imgId + ".png");
+        api.saveBitmapImage(bitmapNavCam, "bit_nav_area_" + areaId + "_" + imgId + ".png");
+        //api.saveMatImage(matNavCam, "mat_nav_area_" + areaId + "_" + imgId + ".mat");
+    }
+
+    @Override
+    protected void runPlan1() {
+        // Deprecated Map<String, List<Pair<String, String>>> patrolResultMap = new HashMap<>();  // map[Markers] = list( pair<string, string> )
+        // Deprecated Map<String, Pair<Point, Quaternion>> pointsMap = new HashMap<>();
+
+        Map<String, List<Pair>> pointsMapList = pointMapList();
+        Map<List<String>, Pair<String, String>> areaInfoMap = new HashMap<>(); // Map<Landmark, Pair<Area, Treasure>>
+        //ObjDetectionSession.createInterpreter(this);
+
+        /*
+        | PATROLLING PHASE |
+        */
+
+        api.startMission(); // Start mission
+        Point point = new Point();
+        Quaternion quaternion = new Quaternion();
 
         List<String> sequencePath = new ArrayList<>(Arrays.asList("Area 1", "Area 2", "Area 3", "Area 4"));
-
-
-//        Map<String, List<Pair>> pointsMapList = new HashMap<>();
-//        private Map<String, Pair<String, String>> areaInfoMap = new HashMap<>(); // Map<Landmark, Pair<Area, Treasure>>
-//        private Pair itemTarget = Pair.create("", "");
 
         for (int i = 0; i < sequencePath.size(); i++) {
             String areaName = sequencePath.get(i);
@@ -130,78 +114,34 @@ public class YourService extends KiboRpcService {
                 api.moveTo(point, quaternion, false);
 
                 // Capture markers and treasures, Save img
-                Bitmap bitmapDockCam = api.getBitmapDockCam();
-                Mat matDockCam = api.getMatDockCam();
-                Bitmap bitmapNavCam = api.getBitmapNavCam();
-                Mat matNavCam = api.getMatNavCam();
-                saveImagePack(bitmapDockCam, matDockCam, bitmapNavCam, matNavCam, i, j);
+                Bitmap bitDock = api.getBitmapDockCam();
+                Bitmap bitNav = api.getBitmapNavCam();
+                Bitmap refinedNav = CamUtils.cropImage(CamUtils.bitmapCalibrate(bitNav));
+                saveImagePack(bitDock, null, refinedNav, null, i, j);
+                /*
+                ArrayList<ArrayList<ArrayList<Float>>> result = ObjDetectionSession.runInference(bitmapNavCam);
+                System.out.println("Result 1 \n");
+                for (ArrayList<ArrayList<Float>> result1 : result) {
+                    for (ArrayList<Float> result2 : result1) {
+                        for (Float ele : result2) {
+                            System.out.println(ele + " ");
+                        }
+                        System.out.println("\n");
+                    }
+                    System.out.println("\n");
+                }
+                System.out.println("\n");
 
+                */
             }
-
             // Recognition Operation
             // Assume: Result Area 2
-            areaInfoMap = imageRecognition(i + 1 /* And some Image stuff */);
 
-            // Handing Treasure not exist (If be null)
-//            boolean hasTreasure;
-//            for (String treasure : treasureList) {
-//                if (treasure == areaInfoMap.)
-//            }
-
+            areaInfoMap = CamUtils.imageRecognition(i + 1 /* And some Image stuff */);
         }
 
-
-        // Jiw's Code
-/*
-        for (int i = 0; i < sequencePath.size(); i++) {
-            String areaName = sequencePath.get(i);
-            Pair<Point, Quaternion> areaPosition = pointsMap.get(areaName);
-
-            // Move through every area
-            point = areaPosition.first;
-            quaternion = areaPosition.second;
-            api.moveTo(point, quaternion, true);
-
-            // Capture markers and treasures, Save img
-            Bitmap bitmapDockCam = api.getBitmapDockCam();
-            Mat matDockCam = api.getMatDockCam();
-            Bitmap bitmapNavCam = api.getBitmapNavCam();
-            Mat matNavCam = api.getMatNavCam();
-            saveImagePack(bitmapDockCam, matDockCam, bitmapNavCam, matNavCam, i, 1);
-
-
-//            objectIdenification() --> get list<string> of detected object, detection time = 1000ms,
-//            List<String> detectionResult = objectList;
-//            for (int it=0; it<detectionResult.size(); it++) {
-//                String item = detectionResult.get(it);
-//                if (itemTypeMap.get(item) == 1) {
-//                    itemName = item;
-//                    itemQuantity++;
-//                } else {
-//                    treasure = item;
-//                }
-//            }
-
-
-            // Detected object variable
-            String itemName = "itemName";
-            String treasure = "None";
-            int itemQuantity = 0;
-
-            // Check if marker is mapped, append pair of treasure name and area
-            Pair<String, String> markerDat = Pair.create(treasure, areaName);
-            if (!patrolResultMap.containsKey(itemName)) {
-                List<Pair<String, String>> markerList = new ArrayList<>(Arrays.asList(markerDat));
-                patrolResultMap.put(itemName, markerList);
-                //System.out.println(markerList.get(0).first);
-            } else {
-                List<Pair<String, String>> markerList = patrolResultMap.get(itemName);
-                markerList.add(markerDat);
-                patrolResultMap.put(itemName, markerList);
-            }
-
-            api.setAreaInfo(i + 1, itemName, itemQuantity);
-        }
+        /*
+        | RECOGNIZE TARGET |
         */
 
         // When you move to the front of the astronaut, report the rounding completion.
@@ -209,28 +149,29 @@ public class YourService extends KiboRpcService {
         quaternion = new Quaternion(0f, 0f, 0.707f, 0.707f);
         api.moveTo(point, quaternion, false);
 
-        //          save img
+        // Save image
+        api.reportRoundingCompletion();
         Bitmap bitmapNavCam = api.getBitmapNavCam();
         Mat matNavCam = api.getMatNavCam();
-        api.saveBitmapImage(bitmapNavCam, "bit_nav_astro");
-        api.saveMatImage(matNavCam, "mat_nav_astro");
+        Mat testMat = new Mat();
 
-        api.reportRoundingCompletion();
+        api.saveBitmapImage(bitmapNavCam, "bit_nav_astro.png");
+        api.saveMatImage(matNavCam, "mat_nav_astro.mat");
 
-        // TODO: Use API here
-        itemTarget = Pair.create(Pair.create("landmark1", "landmark2"), "treasure");
-
-//        private List<String> treasureList = Arrays.asList("crystal", "diamond", "emerald");
-//        private List<String> landmarkList = Arrays.asList("coin", "compass", "coral", "fossil", "key", "letter", "shell", "treasure_box");
-
+        // TODO: Recognize astronaut's deed
+        String landmark1Astro = "landmark1";
+        String landmark2Astro = "landmark2";
+        String treasureAstro = "treasure1";
         String areaTarget = "";
 
+        Pair itemTarget = Pair.create(Pair.create(landmark1Astro, landmark2Astro), treasureAstro);
+        // Loop through every areaInfoMap
         for (Map.Entry<List<String>, Pair<String, String>> entry : areaInfoMap.entrySet()) {
             List<String> landmarks = entry.getKey();
             Pair<String, String> areaTreasurePair = entry.getValue();
+
             String area = areaTreasurePair.first;
             String treasure = areaTreasurePair.second;
-
             // Check landmark and treasure are matched
             for (String landmark : landmarks) {
                 if (landmark.equals(itemTarget.first) && treasure.equals(itemTarget.second)) {
@@ -242,54 +183,12 @@ public class YourService extends KiboRpcService {
         api.notifyRecognitionItem();
 
         // Get ready to go to Target
-        List<Pair> targetCoordList = pointsMapList.get(areaTarget);
-        Pair<Point, Quaternion> targetCoordPair = targetCoordList.get(0);
-        point = targetCoordPair.first;
-        quaternion = targetCoordPair.second;
+        List<Pair> targetCordList = pointsMapList.get(areaTarget);
+        Pair<Point, Quaternion> targetCordPair = targetCordList.get(0);
+        point = targetCordPair.first;
+        quaternion = targetCordPair.second;
 
         api.moveTo(point, quaternion, false);
-
-        // Jiw's Code
-
-//        String targetItem = new String("crystal");
-//        Pair<String, String> astroMarker = new Pair<>("coin", "compass"); // First and Second Target landmark
-//        String targetArea = "Area 1";
-//
-//        if (patrolResultMap.containsKey(astroMarker.first)) {
-//            List<Pair<String, String>> patrolList = patrolResultMap.get(astroMarker.first);
-//            for (int i = 0; i < patrolList.size(); i++) {
-//                String treasure = patrolList.get(i).first;
-//                if (targetItem.equals(treasure)) {
-//                    targetArea = patrolList.get(i).second;
-//                    System.out.print("Marker Detected at " + targetArea);
-//                }
-//            }
-//        } else if (patrolResultMap.containsKey(astroMarker.second)) {
-//            List<Pair<String, String>> patrolList = patrolResultMap.get(astroMarker.second);
-//            for (int i = 0; i < patrolList.size(); i++) {
-//                String treasure = patrolList.get(i).first;
-//                if (targetItem.equals(treasure)) {
-//                    targetArea = patrolList.get(i).second;
-//                    System.out.print("Marker Detected at " + targetArea);
-//                }
-//            }
-//        } else {
-//            System.out.print("No Marker Detected");
-//        }
-
-        /* ********************************************************** */
-        // Let's notify the astronaut when you recognize it.
-
-//        api.notifyRecognitionItem();
-
-
-        // Move to target area and Take a snapshot of the target item.
-//        Pair<Point, Quaternion> targetCoordinate = new Pair<>(pointsMap.get(targetArea).first, pointsMap.get(targetArea).second);
-//        api.moveTo(targetCoordinate.first, targetCoordinate.second, false); // go to target area
-
-
-        // Finish
         api.takeTargetItemSnapshot();
     }
-
 }

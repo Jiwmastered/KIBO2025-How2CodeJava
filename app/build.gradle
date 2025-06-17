@@ -1,5 +1,5 @@
 apply plugin: 'com.android.application'
-
+//apply plugin: 'com.chaquo.python'
 
 android {
     compileSdkVersion 26
@@ -13,6 +13,7 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled  true
+
         ndk {
             abiFilters 'arm64-v8a', 'x86_64'
         }
@@ -35,6 +36,10 @@ android {
         exclude 'META-INF/dependencies.txt'
         exclude 'META-INF/LGPL2.1'
     }
+
+    aaptOptions {
+        noCompress "tflite"
+    }
 }
 
 dependencies {
@@ -52,4 +57,8 @@ dependencies {
         exclude group: 'junit'
     }
     implementation 'com.quickbirdstudios:opencv-contrib:4.5.3.0'
+
+    implementation("org.tensorflow:tensorflow-lite:2.9.0")
+    implementation("org.tensorflow:tensorflow-lite-task-vision:0.3.1")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.9.0")
 }
