@@ -14,6 +14,15 @@ import org.opencv.core.Mat;
 import org.opencv.core.CvType;
 import org.opencv.calib3d.Calib3d;
 
+// เพิ่ม Imports สำหรับ OpenCV ที่จำเป็นในการ cropImage
+import org.opencv.imgproc.Imgproc;
+import org.opencv.core.Core;
+import org.opencv.core.Scalar;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Rect; // ใช้ Rect ของ OpenCV
+// สิ้นสุดส่วนเพิ่ม Imports
+
 import android.text.TextUtils;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +34,7 @@ import java.util.Objects;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Comparator; // เพิ่มสำหรับ Collections.sort
 
 
 /**
@@ -68,6 +78,8 @@ public class YourService extends KiboRpcService {
         } else {
             Log.w(TAG, "DockCam Mat is null, skipping save for: mat_dock_area_" + areaIndex + "_" + imgIndex + labelSuffix);
         }
+        // Note: bitmapNavCam and matNavCam will be saved here if not null,
+        // but the calibrated/cropped versions are saved separately below
         if (bitmapNavCam != null) {
             api.saveBitmapImage(bitmapNavCam, "bit_nav_area_" + areaIndex + "_" + imgIndex + labelSuffix);
         } else {
@@ -188,7 +200,7 @@ public class YourService extends KiboRpcService {
 
         List<String> sequencePath = new ArrayList<>(Arrays.asList("Area 1", "Area 2", "Area 3", "Area 4"));
 
-        for (int i = 0; i < sequencePath.size(); i++) {
+        for (int i = 0; i < sequencePath.size(); i++) { // i is areaIndex
             String areaName = sequencePath.get(i);
             List<Pair<Point, Quaternion>> areaPosList = pointsMapList.get(areaName);
 
@@ -201,7 +213,7 @@ public class YourService extends KiboRpcService {
 
             List<RobotVisionProcessor.DetectionResult> allDetectionsInCurrentArea = new ArrayList<>();
 
-            for (int j = 0; j < areaPosList.size(); j++) {
+            for (int j = 0; j < areaPosList.size(); j++) { // j is imgIndex
                 Pair<Point, Quaternion> move = areaPosList.get(j);
                 Point point = move.first;
                 Quaternion quaternion = move.second;
@@ -217,45 +229,103 @@ public class YourService extends KiboRpcService {
                     continue;
                 }
 
-                try {
-                    Bitmap bitmapDockCam = api.getBitmapDockCam();
-                    Mat matDockCam = api.getMatDockCam();
-                    Bitmap bitmapNavCam = api.getBitmapNavCam();
-                    Mat matNavCam = api.getMatNavCam();
+                Bitmap bitmapDockCam = null;
+                Mat matDockCam = null;
+                Bitmap bitmapNavCam = null;
+                Mat matNavCam = null;
 
-                    List<String> detectedLabelsForCurrentImage = new ArrayList<>();
+                try {
+                    bitmapDockCam = api.getBitmapDockCam();
+                    matDockCam = api.getMatDockCam();
+                    bitmapNavCam = api.getBitmapNavCam();
+                    matNavCam = api.getMatNavCam();
+
+                    List<String> detectedLabelsForCurrentImage = new ArrayList<>(); // This will store labels for naming current image saves
 
                     if (bitmapNavCam != null) {
+                        // 1. Get calibrated image
                         Bitmap preprocessedNavCamBitmap = bitmapCalibrate(bitmapNavCam);
 
+                        // 2. Process image and get detections
                         List<RobotVisionProcessor.DetectionResult> detections = visionProcessor.processImageAndGetResult(preprocessedNavCamBitmap);
-                        allDetectionsInCurrentArea.addAll(detections);
+                        allDetectionsInCurrentArea.addAll(detections); // Accumulate all detections for the area
 
-                        Set<String> uniqueLabels = new HashSet<>();
+                        // Prepare labels for naming (for calibrated and cropped images)
+                        Set<String> uniqueLabelsForImageSet = new HashSet<>(); // Use a set to collect unique labels for the current image
                         for (RobotVisionProcessor.DetectionResult d : detections) {
                             if (d.confidence >= RobotVisionProcessor.CONFIDENCE_THRESHOLD) {
-                                uniqueLabels.add(d.label);
+                                uniqueLabelsForImageSet.add(d.label); // Add to set if confident
                             }
                         }
-                        detectedLabelsForCurrentImage.addAll(uniqueLabels);
-                        Collections.sort(detectedLabelsForCurrentImage);
+                        List<String> sortedUniqueLabelsForImage = new ArrayList<>(uniqueLabelsForImageSet);
+                        Collections.sort(sortedUniqueLabelsForImage);
 
+                        String currentImageLabelSuffix = "";
+                        if (!sortedUniqueLabelsForImage.isEmpty()) {
+                            currentImageLabelSuffix = "_" + TextUtils.join("_", sortedUniqueLabelsForImage).replace(" ", "_");
+                        } else {
+                            currentImageLabelSuffix = "_no_object_detected";
+                        }
+
+                        // 3. Save the CALIBRATED image
+                        // Note: Using a fixed filename for the calibrated image per area/img,
+                        // this assumes you only want one calibrated image saved per position.
+                        api.saveBitmapImage(preprocessedNavCamBitmap, "calibrate_" + i + "_" + j + currentImageLabelSuffix);
+                        Log.d(TAG, "Saved calibrated image: calibrate_" + i + "_" + j + currentImageLabelSuffix);
+
+
+                        // 4. Perform the contour-based crop and save
+                        Bitmap contourCroppedBitmap = cropImage(preprocessedNavCamBitmap);
+                        if (contourCroppedBitmap != null) {
+                            // ใช้ "calibrate_crop_" + areaIndex + "_" + imgIndex + labelSuffix
+                            String contourCroppedFileName = "calibrate_crop_" + i + "_" + j + currentImageLabelSuffix + "_contour_new"; // เพิ่ม "_contour_new" เพื่อความชัดเจนและแยกแยะ
+                            api.saveBitmapImage(contourCroppedBitmap, contourCroppedFileName);
+                            Log.d(TAG, "Saved contour-cropped image: " + contourCroppedFileName);
+                            contourCroppedBitmap.recycle(); // IMPORTANT: Recycle the cropped bitmap
+                        } else {
+                            Log.w(TAG, "Failed to perform contour-based crop for image at " + areaName + " pos " + (j+1));
+                        }
+
+
+                        // Update detectedLabelsForCurrentImage for the saveImagePack method (for raw images)
+                        detectedLabelsForCurrentImage.addAll(sortedUniqueLabelsForImage);
+
+                        // 5. Log detections (already existing)
                         for (RobotVisionProcessor.DetectionResult d : detections) {
                             Log.d(TAG, "Detected in " + areaName + " pos " + (j+1) + ": " + d.toString());
                         }
 
+                        // 6. Recycle the preprocessedNavCamBitmap after all processing is done for it
+                        if (preprocessedNavCamBitmap != null) {
+                            preprocessedNavCamBitmap.recycle();
+                        }
+
                     } else {
                         Log.w(TAG, "NavCam image was null at " + areaName + " pos " + (j+1) + ". No prediction made.");
-                        // แทนที่ api.sendDisablerose ด้วย Log.e
                         Log.e(TAG, "NavCam image null at " + areaName + " pos " + (j+1));
                     }
 
+                    // Save the original (raw) images using the existing saveImagePack method
                     saveImagePack(bitmapDockCam, matDockCam, bitmapNavCam, matNavCam, i, j, detectedLabelsForCurrentImage);
 
                 } catch (Exception e) {
                     Log.e(TAG, "Exception during image capture or vision processing for " + areaName + " position " + (j+1) + ": " + e.getMessage(), e);
-                    // แทนที่ api.sendDisablerose ด้วย Log.e
                     Log.e(TAG, "Image processing error at " + areaName + " pos " + (j+1) + ": " + e.getMessage());
+                } finally {
+                    // Ensure all Bitmaps and Mats obtained from API are recycled/released
+                    // regardless of exceptions to prevent memory leaks
+                    if (bitmapNavCam != null) {
+                        bitmapNavCam.recycle();
+                    }
+                    if (bitmapDockCam != null) {
+                        bitmapDockCam.recycle();
+                    }
+                    if (matNavCam != null) {
+                        matNavCam.release();
+                    }
+                    if (matDockCam != null) {
+                        matDockCam.release();
+                    }
                 }
             }
 
@@ -279,7 +349,6 @@ public class YourService extends KiboRpcService {
                     Log.i(TAG, "Reported Area: " + areaName + " (ID: " + areaId + "), Detected Items: " + reportString);
                 } else {
                     Log.e(TAG, "Area ID not found for areaName: " + areaName + ". Cannot report area info via API.");
-                    // แทนที่ api.sendDisablerose ด้วย Log.e
                     Log.e(TAG, "Area ID not found for " + areaName + ". Reporting skipped.");
                 }
 
@@ -291,7 +360,6 @@ public class YourService extends KiboRpcService {
                     Log.i(TAG, "Reported Area: " + areaName + " (ID: " + areaId + "), Detected Items: No_Item_Detected");
                 } else {
                     Log.e(TAG, "Area ID not found for areaName: " + areaName + ". Cannot report default item.");
-                    // แทนที่ api.sendDisablerose ด้วย Log.e
                     Log.e(TAG, "Area ID not found for " + areaName + ". Reporting skipped.");
                 }
             }
@@ -306,19 +374,53 @@ public class YourService extends KiboRpcService {
             Log.i(TAG, "Move command sent to Astronaut position. Check robot logs for actual success.");
         } catch (Exception e) {
             Log.e(TAG, "Exception during move to Astronaut position: " + e.getMessage(), e);
-            // แทนที่ api.sendDisablerose ด้วย Log.e
             Log.e(TAG, "Move to astronaut failed: " + e.getMessage());
         }
 
+        Bitmap bitmapNavCamAstro = null;
+        Mat matNavCamAstro = null;
         try {
-            Bitmap bitmapNavCamAstro = api.getBitmapNavCam();
-            Mat matNavCamAstro = api.getMatNavCam();
+            bitmapNavCamAstro = api.getBitmapNavCam();
+            matNavCamAstro = api.getMatNavCam();
+
+            // Calibrate the astronaut image
+            Bitmap preprocessedNavCamBitmapAstro = null;
+            if (bitmapNavCamAstro != null) {
+                preprocessedNavCamBitmapAstro = bitmapCalibrate(bitmapNavCamAstro);
+                api.saveBitmapImage(preprocessedNavCamBitmapAstro, "calibrate_astro_999");
+            }
+
+            // Crop the astronaut image using the new crop_image logic
+            Bitmap croppedNavCamBitmapAstro = null;
+            if (preprocessedNavCamBitmapAstro != null) {
+                croppedNavCamBitmapAstro = cropImage(preprocessedNavCamBitmapAstro);
+                api.saveBitmapImage(croppedNavCamBitmapAstro, "calibrate_crop_astro_999_new"); // Save with a specific name
+            } else {
+                Log.w(TAG, "Preprocessed astronaut bitmap is null, cannot perform crop.");
+            }
+
             List<String> emptyDetectedLabels = new ArrayList<>();
+            // Save the original raw astronaut images
             saveImagePack(null, null, bitmapNavCamAstro, matNavCamAstro, -1, 999, emptyDetectedLabels);
+
+            // Recycle bitmaps
+            if (preprocessedNavCamBitmapAstro != null) {
+                preprocessedNavCamBitmapAstro.recycle();
+            }
+            if (croppedNavCamBitmapAstro != null) {
+                croppedNavCamBitmapAstro.recycle();
+            }
+
         } catch (Exception e) {
             Log.e(TAG, "Exception during saving astronaut images: " + e.getMessage(), e);
-            // แทนที่ api.sendDisablerose ด้วย Log.e
             Log.e(TAG, "Saving astronaut image failed: " + e.getMessage());
+        } finally {
+            if (bitmapNavCamAstro != null) {
+                bitmapNavCamAstro.recycle();
+            }
+            if (matNavCamAstro != null) {
+                matNavCamAstro.release();
+            }
         }
 
         api.reportRoundingCompletion();
@@ -369,8 +471,6 @@ public class YourService extends KiboRpcService {
                     Log.i(TAG, "Move command sent to target item position. Check robot logs for actual success.");
                 } catch (Exception e) {
                     Log.e(TAG, "Exception during move to target item position (" + areaTarget + "): " + e.getMessage(), e);
-                    // แทนที่ api.sendDisablerose ด้วย Log.e
-                    Log.e(TAG, "Move to target item failed: " + e.getMessage());
                 }
 
                 try {
@@ -378,19 +478,13 @@ public class YourService extends KiboRpcService {
                     Log.i(TAG, "Target item snapshot taken. Mission completed successfully.");
                 } catch (Exception e) {
                     Log.e(TAG, "Exception during takeTargetItemSnapshot: " + e.getMessage(), e);
-                    // แทนที่ api.sendDisablerose ด้วย Log.e
-                    Log.e(TAG, "Taking target item snapshot failed: " + e.getMessage());
                 }
 
             } else {
                 Log.e(TAG, "Target coordinates for " + areaTarget + " not found or fewer than 2 points. Cannot move to 2nd target item position.");
-                // แทนที่ api.sendDisablerose ด้วย Log.e
-                Log.e(TAG, "Target coordinates for " + areaTarget + " not found or insufficient.");
             }
         } else {
             Log.e(TAG, "Target item area not found based on recognition results. Mission may not be fully completed.");
-            // แทนที่ api.sendDisablerose ด้วย Log.e
-            Log.e(TAG, "Target item area not found in detected classes.");
         }
     }
 
@@ -415,9 +509,6 @@ public class YourService extends KiboRpcService {
         Mat simNavCamDistort = new Mat(1, 5, CvType.CV_64FC1);
         assignMat(simNavCamDistort, DistCamArr);
 
-        int imageWidth = distortedImg.getWidth();
-        int imageHeight = distortedImg.getHeight();
-
         Mat distortedImageMat = new Mat();
         Utils.bitmapToMat(distortedImg, distortedImageMat);
         Mat undistortedImageMat = new Mat();
@@ -433,5 +524,165 @@ public class YourService extends KiboRpcService {
         undistortedImageMat.release();
 
         return undistortedImageBitmap;
+    }
+
+    /**
+     * Crops an image based on the largest 4-point contour found.
+     * Implemented based on the provided Python code.
+     * @param inputBitmap The input Bitmap to be cropped.
+     * @return The cropped Bitmap, or the original Bitmap if no valid contour is found or cropping fails.
+     */
+    public static Bitmap cropImage(Bitmap inputBitmap) {
+        Mat img = new Mat();
+        Utils.bitmapToMat(inputBitmap, img);
+        Mat gray = new Mat();
+        Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
+
+        Mat thresh = new Mat();
+        Imgproc.adaptiveThreshold(gray, thresh, 255.0, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 2);;
+
+        Mat hsv = new Mat();
+        Imgproc.cvtColor(img, hsv, Imgproc.COLOR_BGR2HSV);
+        Scalar lowerWhite = new Scalar(0, 0, 160);
+        Scalar upperWhite = new Scalar(180, 20, 255);
+        Mat mask = new Mat();
+        Core.inRange(hsv, lowerWhite, upperWhite, mask);
+
+        Mat filtered = new Mat();
+        Imgproc.GaussianBlur(thresh, filtered, new org.opencv.core.Size(5, 5), 0);
+
+        Mat edged = new Mat();
+        Imgproc.Canny(filtered, edged, 60, 180);
+
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new org.opencv.core.Size(3, 3));
+        Imgproc.morphologyEx(edged, edged, Imgproc.MORPH_CLOSE, kernel);
+        kernel.release(); // Release kernel
+
+        List<MatOfPoint> keypoints = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(edged.clone(), keypoints, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        hierarchy.release(); // Release hierarchy
+
+        // Sort contours by area in descending order and take top 10
+        List<MatOfPoint> contours = new ArrayList<>();
+        if (!keypoints.isEmpty()) {
+            // Sort by area and add to a new list
+            Collections.sort(keypoints, new Comparator<MatOfPoint>() {
+                @Override
+                public int compare(MatOfPoint o1, MatOfPoint o2) {
+                    return Double.compare(Imgproc.contourArea(o2), Imgproc.contourArea(o1));
+                }
+            });
+            for (int k = 0; k < Math.min(keypoints.size(), 10); k++) {
+                contours.add(keypoints.get(k));
+            }
+        }
+        // Release original keypoints list Mats
+        for (MatOfPoint mp : keypoints) {
+            mp.release();
+        }
+
+        MatOfPoint location = null;
+        for (MatOfPoint contour : contours) {
+            MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
+            double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
+            MatOfPoint2f approxCurve = new MatOfPoint2f();
+            Imgproc.approxPolyDP(contour2f, approxCurve, epsilon, true);
+
+            if (approxCurve.total() == 4) {
+                location = new MatOfPoint(approxCurve.toArray());
+                approxCurve.release(); // Release approxCurve as its points are copied
+                contour2f.release(); // Release contour2f
+                break;
+            }
+            approxCurve.release(); // Release approxCurve for contours not matching 4 points
+            contour2f.release(); // Release contour2f for contours not matching 4 points
+        }
+        // Release remaining contours in the sorted list
+        for (MatOfPoint mp : contours) {
+            mp.release();
+        }
+
+
+        if (location == null) {
+            Log.w(TAG, "cropImage: Could not find a 4-point contour. Returning original image.");
+            // Release all intermediate Mats
+            img.release();
+            gray.release();
+            thresh.release();
+            hsv.release();
+            mask.release();
+            filtered.release();
+            edged.release();
+            return inputBitmap;
+        }
+
+        Mat polyMask = Mat.zeros(gray.size(), CvType.CV_8UC1);
+        List<MatOfPoint> listLocation = new ArrayList<>();
+        listLocation.add(location);
+        Imgproc.fillPoly(polyMask, listLocation, new Scalar(255));
+
+        Mat sampleImage = new Mat();
+        Core.bitwise_and(img, img, sampleImage, polyMask);
+
+        // Convert MatOfPoint (location) to an array of Point for easier access to x_min, x_max, etc.
+        org.opencv.core.Point[] points = location.toArray();
+
+        int x_min = img.cols();
+        int x_max = 0;
+        int y_min = img.rows();
+        int y_max = 0;
+
+        for (org.opencv.core.Point p : points) {
+            if (p.x < x_min) x_min = (int) p.x;
+            if (p.x > x_max) x_max = (int) p.x;
+            if (p.y < y_min) y_min = (int) p.y;
+            if (p.y > y_max) y_max = (int) p.y;
+        }
+
+        // Add some padding if desired, but ensure it doesn't go out of bounds
+        int padding = 5; // Example padding
+        x_min = Math.max(0, x_min - padding);
+        y_min = Math.max(0, y_min - padding);
+        x_max = Math.min(img.cols(), x_max + padding);
+        y_max = Math.min(img.rows(), y_max + padding);
+
+
+        // Check for valid crop dimensions (must be at least 1x1 pixel)
+        if (x_max <= x_min || y_max <= y_min) {
+            Log.w(TAG, "Invalid ROI for cropping. Returning original image.");
+            // Release all intermediate Mats
+            img.release();
+            gray.release();
+            thresh.release();
+            hsv.release();
+            mask.release();
+            filtered.release();
+            edged.release();
+            polyMask.release();
+            sampleImage.release();
+            location.release(); // Release location
+            return inputBitmap;
+        }
+
+        Rect roi = new Rect(x_min, y_min, x_max - x_min, y_max - y_min);
+        Mat croppedMat = new Mat(sampleImage, roi);
+        Bitmap croppedBitmap = Bitmap.createBitmap(croppedMat.cols(), croppedMat.rows(), inputBitmap.getConfig());
+        Utils.matToBitmap(croppedMat, croppedBitmap);
+
+        // Release all Mats created in this method
+        img.release();
+        gray.release();
+        thresh.release();
+        hsv.release();
+        mask.release();
+        filtered.release();
+        edged.release();
+        polyMask.release();
+        sampleImage.release();
+        croppedMat.release();
+        location.release(); // Release location Mat after use
+
+        return croppedBitmap;
     }
 }
