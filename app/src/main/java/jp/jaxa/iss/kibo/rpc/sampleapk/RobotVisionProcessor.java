@@ -55,7 +55,7 @@ public class RobotVisionProcessor {
     private static final int HEIGHT_COORD_ROW_INDEX = 3;
     private static final int FIRST_CLASS_PROB_ROW_INDEX = 4;
 
-    public static final float CONFIDENCE_THRESHOLD = 0.5f;
+    public static final float CONFIDENCE_THRESHOLD = 0.65f;
     private static final float IOU_THRESHOLD = 0.45f;
     private static final int NUM_CLASSES = 11;
 
@@ -221,7 +221,7 @@ public class RobotVisionProcessor {
         }
         inputBuffer.rewind();
 
-        int outputArraySize = 15 * NUM_PREDICTION_SLOTS;
+        int outputArraySize = (FIRST_CLASS_PROB_ROW_INDEX + NUM_CLASSES) * NUM_PREDICTION_SLOTS;
         ByteBuffer outputBuffer = ByteBuffer.allocateDirect(outputArraySize * 4);
         outputBuffer.order(ByteOrder.nativeOrder());
 
@@ -334,135 +334,184 @@ public class RobotVisionProcessor {
      * @return A new, cropped Bitmap. If no suitable contour is found, returns the original inputBitmap.
      */
     private static Bitmap cropImage(Bitmap inputBitmap) {
-        Mat img = new Mat();
-        Utils.bitmapToMat(inputBitmap, img);
-        // Convert to grayscale
-        Mat gray = new Mat();
-        Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
-
-        // Adaptive threshold
-        Mat thresh = new Mat();
-        Imgproc.adaptiveThreshold(gray, thresh, 255,
-                Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
-                Imgproc.THRESH_BINARY, 11, 2);
-
-        // Convert to HSV
-        Mat hsv = new Mat();
-        Imgproc.cvtColor(img, hsv, Imgproc.COLOR_BGR2HSV);
-
-        // Mask white colors in HSV
-        Scalar lowerWhite = new Scalar(0, 0, 160);
-        Scalar upperWhite = new Scalar(180, 30, 255);
-        Mat mask = new Mat();
-        Core.inRange(hsv, lowerWhite, upperWhite, mask);
-
-        // Combine mask with thresholded image
-        Mat edged = new Mat();
-        Core.bitwise_and(thresh, mask, edged);
-
-        // Find contours
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edged.clone(), contours, hierarchy,
-                Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        // Release intermediate Mats
-        gray.release();
-        thresh.release();
-        hsv.release();
-        mask.release();
-        edged.release();
-        hierarchy.release();
-
-        if (contours.isEmpty()) {
-            Log.w(TAG, "cropImage: No contours found. Returning original image.");
-            img.release();
-            return inputBitmap; // Return original inputBitmap as no contour was found
-        }
-
-        // Sort contours by area
-        Collections.sort(contours, new Comparator<MatOfPoint>() {
-            @Override
-            public int compare(MatOfPoint a, MatOfPoint b) {
-                return Double.compare(Imgproc.contourArea(b), Imgproc.contourArea(a));
-            }
-        });
-
-        // Find a 4-point contour
-        MatOfPoint2f approxCurve = new MatOfPoint2f();
+        Mat img = null;
+        Mat gray = null;
+        Mat thresh = null;
+        Mat hsv = null;
+        Mat mask = null;
+        Mat edged = null;
+        Mat hierarchy = null;
+        MatOfPoint2f approxCurve = null;
+        MatOfPoint2f contour2f = null;
         MatOfPoint location = null;
+        Mat polyMask = null;
+        Mat sampleImage = null;
+        Mat croppedMat = null;
+        Bitmap outputBitmap = null;
 
-        for (MatOfPoint contour : contours) {
-            MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
-            double epsilon = 0.01 * Imgproc.arcLength(contour2f, true);
-            Imgproc.approxPolyDP(contour2f, approxCurve, epsilon, true);
-            if (approxCurve.total() == 4) {
-                location = new MatOfPoint(approxCurve.toArray());
-                contour2f.release(); // Release this MatOfPoint2f
-                break;
+        List<MatOfPoint> contours = new ArrayList<>();
+
+        try {
+            img = new Mat();
+            Utils.bitmapToMat(inputBitmap, img);
+
+            // Convert to grayscale
+            gray = new Mat();
+            Imgproc.cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
+
+            // --- Improvement 1: Adjust Adaptive Thresholding Parameters ---
+            // Increased block size and C value slightly for potentially better noise reduction and edge detection
+            thresh = new Mat();
+            Imgproc.adaptiveThreshold(gray, thresh, 255,
+                    Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
+                    Imgproc.THRESH_BINARY, 15, 5); // Changed from 11, 2 to 15, 5
+
+            // --- Improvement 2: Adjust HSV White Mask ---
+            hsv = new Mat();
+            Imgproc.cvtColor(img, hsv, Imgproc.COLOR_BGR2HSV);
+
+            // Loosened the white mask slightly to catch more variations of white/grey
+            // Increased S upper bound, slightly lowered V lower bound
+            Scalar lowerWhite = new Scalar(0, 0, 150); // Changed from 160
+            Scalar upperWhite = new Scalar(180, 40, 255); // Changed from 30
+            mask = new Mat();
+            Core.inRange(hsv, lowerWhite, upperWhite, mask);
+
+            // --- Improvement 3: Consider adding Canny Edge Detector for more robust edges ---
+            // You can uncomment and try this block if the above changes are not enough.
+            // This might make the edges cleaner for contour detection.
+            /*
+            Mat cannyEdges = new Mat();
+            Imgproc.Canny(gray, cannyEdges, 50, 150); // Tweak min/max thresholds as needed
+            Core.bitwise_and(thresh, cannyEdges, edged); // Combine threshold with Canny edges
+            */
+            // For now, sticking to the original combination:
+            edged = new Mat();
+            Core.bitwise_and(thresh, mask, edged);
+
+
+            // Find contours
+            hierarchy = new Mat();
+            Imgproc.findContours(edged.clone(), contours, hierarchy,
+                    Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+
+            // Release intermediate Mats early
+            gray.release();
+            thresh.release();
+            hsv.release();
+            mask.release();
+            edged.release();
+            hierarchy.release();
+            // If you use cannyEdges, release it here too.
+
+            if (contours.isEmpty()) {
+                Log.w(TAG, "cropImage: No contours found. Returning original image.");
+                img.release();
+                return inputBitmap;
             }
-            contour2f.release(); // Release this MatOfPoint2f
+
+            // Sort contours by area
+            Collections.sort(contours, new Comparator<MatOfPoint>() {
+                @Override
+                public int compare(MatOfPoint a, MatOfPoint b) {
+                    return Double.compare(Imgproc.contourArea(b), Imgproc.contourArea(a));
+                }
+            });
+
+            // Find a 4-point contour
+            approxCurve = new MatOfPoint2f();
+            location = null;
+
+            for (MatOfPoint contour : contours) {
+                MatOfPoint2f currentContour2f = new MatOfPoint2f(contour.toArray());
+
+                // --- Improvement 4: Adjust epsilon in approxPolyDP ---
+                // Epsilon scaled by the larger of width/height for more consistent approximation
+                double arcLength = Imgproc.arcLength(currentContour2f, true);
+                double epsilon = 0.02 * arcLength; // Increased from 0.01 to 0.02 for potentially smoother approximation
+
+                Imgproc.approxPolyDP(currentContour2f, approxCurve, epsilon, true);
+
+                if (approxCurve.total() == 4 && Imgproc.isContourConvex(new MatOfPoint(approxCurve.toArray()))) {
+                    location = new MatOfPoint(approxCurve.toArray());
+                    currentContour2f.release();
+                    break;
+                }
+                currentContour2f.release();
+            }
+
+            // Release all MatOfPoint objects in contours list
+            for (MatOfPoint contour : contours) {
+                contour.release();
+            }
+
+            if (location == null) {
+                Log.w(TAG, "cropImage: Could not find a suitable 4-point convex contour. Returning original image.");
+                if (approxCurve != null) approxCurve.release();
+                img.release();
+                return inputBitmap;
+            }
+
+            // Create mask from polygon
+            polyMask = Mat.zeros(img.size(), CvType.CV_8UC1);
+            List<MatOfPoint> list = new ArrayList<>();
+            list.add(location);
+            Imgproc.fillPoly(polyMask, list, new Scalar(255));
+
+            // Apply mask to image
+            sampleImage = new Mat();
+            Core.bitwise_and(img, img, sampleImage, polyMask);
+
+            // Crop using bounding box of polygon
+            org.opencv.core.Rect roi = Imgproc.boundingRect(location);
+
+            // --- Improvement 5: Add a small padding to the bounding box and ensure validity ---
+            int padding = 10; // Increased padding from 5 to 10
+            int xMin = Math.max(0, roi.x - padding);
+            int yMin = Math.max(0, roi.y - padding);
+            int xMax = Math.min(img.cols(), roi.x + roi.width + padding);
+            int yMax = Math.min(img.rows(), roi.y + roi.height + padding);
+
+            if (xMax <= xMin || yMax <= yMin) {
+                Log.w(TAG, "Invalid ROI for cropping (width or height is zero/negative) after padding. Returning original image.");
+                if (approxCurve != null) approxCurve.release();
+                if (location != null) location.release();
+                if (polyMask != null) polyMask.release();
+                if (sampleImage != null) sampleImage.release();
+                img.release();
+                return inputBitmap;
+            }
+
+            org.opencv.core.Rect safeRoi = new org.opencv.core.Rect(xMin, yMin, xMax - xMin, yMax - yMin);
+            croppedMat = new Mat(sampleImage, safeRoi);
+            outputBitmap = Bitmap.createBitmap(croppedMat.cols(), croppedMat.rows(), inputBitmap.getConfig());
+            Utils.matToBitmap(croppedMat, outputBitmap);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in cropImage: " + e.getMessage(), e);
+            // In case of an error, return the original bitmap.
+            // If img is not null, convert it. Otherwise, return the original inputBitmap directly.
+            if (img != null) {
+                outputBitmap = Bitmap.createBitmap(img.width(), img.height(), inputBitmap.getConfig());
+                Utils.matToBitmap(img, outputBitmap);
+            } else {
+                return inputBitmap; // Fallback to original inputBitmap
+            }
+            return outputBitmap;
+        } finally {
+            // Release all Mats created in this method to prevent memory leaks
+            if (img != null) img.release();
+            // gray, thresh, hsv, mask, edged, hierarchy are released early
+            if (approxCurve != null) approxCurve.release();
+            if (location != null) location.release();
+            if (polyMask != null) polyMask.release();
+            if (sampleImage != null) sampleImage.release();
+            if (croppedMat != null) croppedMat.release();
+
+            // All MatOfPoint in contours list are released within the loop or after
+            // The list itself doesn't need to be released
         }
-
-        // Release MatOfPoint objects in contours list
-        for (MatOfPoint contour : contours) {
-            contour.release();
-        }
-
-        if (location == null) {
-            Log.w(TAG, "cropImage: Could not find a 4-point contour. Returning original image.");
-            approxCurve.release();
-            img.release();
-            return inputBitmap; // Return original inputBitmap as no 4-point contour was found
-        }
-
-        // Create mask from polygon
-        Mat polyMask = Mat.zeros(img.size(), CvType.CV_8UC1);
-        List<MatOfPoint> list = new ArrayList<>();
-        list.add(location);
-        Imgproc.fillPoly(polyMask, list, new Scalar(255));
-
-        // Apply mask to image
-        Mat sampleImage = new Mat();
-        Core.bitwise_and(img, img, sampleImage, polyMask);
-
-        // Crop using bounding box of polygon
-        // Using org.opencv.core.Rect for OpenCV operations
-        org.opencv.core.Rect roi = Imgproc.boundingRect(location);
-
-        // Ensure valid ROI coordinates (within image bounds)
-        // This is crucial if boundingRect goes slightly out of bounds or provides invalid dimensions.
-        int xMin = Math.max(0, roi.x);
-        int yMin = Math.max(0, roi.y);
-        int xMax = Math.min(img.cols(), roi.x + roi.width);
-        int yMax = Math.min(img.rows(), roi.y + roi.height);
-
-        // Check for valid crop dimensions (must be at least 1x1 pixel)
-        if (xMax <= xMin || yMax <= yMin) {
-            Log.w(TAG, "Invalid ROI for cropping after bounding box calculation. Returning original image.");
-            // Release remaining Mats before returning
-            img.release();
-            approxCurve.release();
-            location.release();
-            polyMask.release();
-            sampleImage.release();
-            return inputBitmap;
-        }
-
-        org.opencv.core.Rect safeRoi = new org.opencv.core.Rect(xMin, yMin, xMax - xMin, yMax - yMin);
-        Mat croppedMat = new Mat(sampleImage, safeRoi);
-        Bitmap croppedBitmap = Bitmap.createBitmap(croppedMat.cols(), croppedMat.rows(), inputBitmap.getConfig());
-        Utils.matToBitmap(croppedMat, croppedBitmap);
-
-        // Release all remaining Mats
-        img.release();
-        approxCurve.release();
-        location.release();
-        polyMask.release();
-        sampleImage.release();
-        croppedMat.release();
-
-        return croppedBitmap;
+        return outputBitmap;
     }
 
     public void close() {
